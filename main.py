@@ -19,7 +19,7 @@ SECTION_CONFIG = {
     }
 }
 
-COLUMN_MAPPING = {
+COLUMN_MAPPING_A = {
     "KodeAset": "CodeOfAsset",
     "KelompokAset": "GroupOfAsset",
     "BulanPerolehan": "MonthOfAcquisition",
@@ -32,17 +32,50 @@ COLUMN_MAPPING = {
     "Keterangan": "Notes"
 }
 
+HEADER_CONFIG_B = {
+    "TIN": {
+        "label": "NPWP SPT",
+        "xml_tag": "TIN"
+    },
+    "TaxYear": {
+        "label": "Tahun Pajak",
+        "xml_tag": "TaxYear"
+    }
+}
+
+COLUMN_MAPPING_B = {
+    "NomorIdentitas": "IdentityNumber",
+    "NamaPenerima": "Name",
+    "Alamat": "Address",
+    "Tanggal": "DateOfPromotion",
+    "BentukJenisBiaya": "FormAndType",
+    "Nilai": "AmountOfPromotion",
+    "PPhDipotongDipungut": "AmountOfWitholding",
+    "NomorBupot": "WitholdingSlipNumber",
+    "Keterangan": "Description"
+}
+
 def read_excel_file(uploaded_file):
     df = pd.read_excel(uploaded_file, sheet_name="DATA", header=None)
-    df = df.dropna(how="all")
-    return df
+    return df.dropna(how="all")
 
-def convert_to_xml(df):
+def extract_header_values(df, header_config):
+    result = {}
+    for _, row in df.iterrows():
+        for cfg in header_config.values():
+            for i, cell in enumerate(row):
+                if str(cell).strip() == cfg["label"]:
+                    result[cfg["xml_tag"]] = (
+                        str(row[i + 1]).strip()
+                        if i + 1 < len(row)
+                        else ""
+                    )
+    return result
+
+def convert_tab_a(df):
     root = ET.Element(
         "DepreciationAmortization",
-        attrib={
-            "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance"
-        }
+        attrib={"xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance"}
     )
 
     current_cfg = None
@@ -65,99 +98,118 @@ def convert_to_xml(df):
         if header and not row.isnull().all():
             record = ET.SubElement(outer_el, current_cfg["list_tag"])
             for col_name, value in zip(header, row):
-                if pd.notna(value) and col_name in COLUMN_MAPPING:
+                if pd.notna(value) and col_name in COLUMN_MAPPING_A:
                     ET.SubElement(
                         record,
-                        COLUMN_MAPPING[col_name]
+                        COLUMN_MAPPING_A[col_name]
                     ).text = str(value)
 
     ET.indent(root, space="  ")
-    buffer = io.BytesIO()
-    ET.ElementTree(root).write(buffer, encoding="utf-8")
-    return buffer.getvalue().decode("utf-8")
+    buf = io.BytesIO()
+    ET.ElementTree(root).write(buf, encoding="utf-8")
+    return buf.getvalue().decode("utf-8")
+
+def convert_tab_b(df):
+    header_values = extract_header_values(df, HEADER_CONFIG_B)
+
+    root = ET.Element(
+        "PromotionExpense",
+        attrib={"xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance"}
+    )
+
+    ET.SubElement(root, "TIN").text = header_values.get("TIN", "")
+    ET.SubElement(root, "TaxYear").text = header_values.get("TaxYear", "")
+
+    expense_list = ET.SubElement(root, "PromotionExpenseList")
+
+    header = None
+    start_data = False
+
+    for _, row in df.iterrows():
+        first_cell = str(row[0]).strip()
+
+        if first_cell == "Nomor Identitas":
+            header = [
+                str(col)
+                .replace(" ", "")
+                .replace("&", "")
+                .replace("/", "")
+                for col in row
+            ]
+            start_data = True
+            continue
+
+        if start_data and header and not row.isnull().all():
+            item = ET.SubElement(expense_list, "List")
+            for col_name, value in zip(header, row):
+                if pd.notna(value) and col_name in COLUMN_MAPPING_B:
+                    ET.SubElement(
+                        item,
+                        COLUMN_MAPPING_B[col_name]
+                    ).text = str(value)
+
+    ET.indent(root, space="  ")
+    buf = io.BytesIO()
+    ET.ElementTree(root).write(buf, encoding="utf-8")
+    return buf.getvalue().decode("utf-8")
 
 def main():
     st.title("🔄 Konverter XLSX ke XML")
-    st.markdown(
-        "Aplikasi untuk mengkonversi file XLSX (sheet **DATA**) "
-        "menjadi format XML **Depreciation & Amortization**"
-    )
 
-    uploaded_file = st.file_uploader(
-        "📁 Pilih file XLSX:",
-        type=["xlsx", "xls"],
-        help="Upload file Excel dengan sheet bernama 'DATA'"
-    )
+    tab_a, tab_b = st.tabs([
+        "📄 Depreciation & Amortization (L9)",
+        "🎁 Promotion Expense (L11)"
+    ])
 
-    if uploaded_file is not None:
-        st.success(f"✅ File '{uploaded_file.name}' berhasil diupload!")
+    with tab_a:
+        st.markdown("Konversi XLSX ke XML **Depreciation & Amortization**")
 
-        with st.spinner("📖 Membaca file Excel..."):
-            df = read_excel_file(uploaded_file)
+        file_a = st.file_uploader(
+            "Upload XLSX dengan SheetName = DATA",
+            type=["xlsx", "xls"],
+            key="file_a"
+        )
 
-        st.subheader("📊 Preview Data")
-        st.dataframe(df.head(), use_container_width=True)
-        st.info(f"📈 Total baris data: {len(df)}")
+        if file_a:
+            df = read_excel_file(file_a)
+            st.dataframe(df.head(), width="stretch")
 
-        if st.button(
-            "🔄 Konversi ke XML",
-            type="primary",
-            use_container_width=True
-        ):
-            with st.spinner("⚙️ Mengkonversi ke XML..."):
-                try:
-                    xml_string = convert_to_xml(df)
+            if st.button("🔄 Convert to XML", type="primary", key="btn_a", width="stretch"):
+                xml = convert_tab_a(df)
+                st.code(xml[:800] + "...", language="xml")
 
-                    st.success("✅ Konversi berhasil!")
+                st.download_button(
+                    "💾 Download XML",
+                    xml,
+                    file_a.name.replace(".xlsx", ".xml"),
+                    "application/xml",
+                    width="stretch"
+                )
 
-                    st.subheader("📄 Preview XML")
-                    st.code(
-                        xml_string[:500] + "..."
-                        if len(xml_string) > 500
-                        else xml_string,
-                        language="xml"
-                    )
+    with tab_b:
+        st.markdown("Konversi XLSX ke XML **Promotion Expense**")
 
-                    filename = (
-                        uploaded_file.name
-                        .replace(".xlsx", ".xml")
-                        .replace(".xls", ".xml")
-                    )
+        file_b = st.file_uploader(
+            "Upload XLSX dengan SheetName = DATA",
+            type=["xlsx", "xls"],
+            key="file_b"
+        )
 
-                    st.download_button(
-                        label="💾 Download XML",
-                        data=xml_string,
-                        file_name=filename,
-                        mime="application/xml",
-                        type="primary",
-                        use_container_width=True
-                    )
+        if file_b:
+            df = read_excel_file(file_b)
+            st.dataframe(df.head(), width="stretch")
 
-                except Exception as e:
-                    st.error(f"❌ Error saat konversi: {str(e)}")
+            if st.button("🔄 Convert to XML", type="primary", key="btn_b", width="stretch"):
+                xml = convert_tab_b(df)
+                st.code(xml[:800] + "...", language="xml")
 
-    else:
-        st.info("👆 Silakan upload file XLSX di atas untuk memulai konversi")
-
-        st.subheader("📋 Format File yang Diharapkan")
-        st.markdown("""
-        File XLSX harus memiliki:
-        - **Sheet bernama 'DATA'**
-        - **Section di kolom pertama**:
-          - Daftar Penyusutan
-          - Daftar Amortisasi
-        - **Header kolom**:
-          - Kode Aset
-          - Kelompok Aset
-          - Bulan Perolehan
-          - Tahun Perolehan
-          - Harga Perolehan
-          - Nilai Sisa Buku
-          - Metode Komersial
-          - Metode Fiskal
-          - Penyusutan Fiskal
-          - Keterangan
-        """)
+                st.download_button(
+                    "💾 Download XML",
+                    xml,
+                    file_b.name.replace(".xlsx", ".xml"),
+                    "application/xml",
+                    width="stretch"
+                )
 
 if __name__ == "__main__":
     main()
