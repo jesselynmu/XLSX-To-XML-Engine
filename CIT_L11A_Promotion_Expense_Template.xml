@@ -1,0 +1,105 @@
+<PromotionExpense xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <TIN>0010695997058000</TIN>
+  <TaxYear>2023</TaxYear>
+  <PromotionExpenseList>
+    <List>
+      <IdentityNumber>A1234JH</IdentityNumber>
+      <Name>MARTEEN</Name>
+      <Address>DK TENGAH RT 001 RW 007 KAB. BREBES 52273</Address>
+      <DateOfPromotion>21-03-2023</DateOfPromotion>
+      <FormAndType>EXHIBITION</FormAndType>
+      <AmountOfPromotion>5603837.5</AmountOfPromotion>
+      <AmountOfWitholding>7438100</AmountOfWitholding>
+      <WitholdingSlipNumber>2000000P4</WitholdingSlipNumber>
+      <Description>Sample Product</Description>
+    </List>
+    <List>
+      <IdentityNumber>A1234JH</IdentityNumber>
+      <Name>ACHMAD SAHRI</Name>
+      <Address>BRUNEI DARUSSALAM</Address>
+      <DateOfPromotion>21-03-2023</DateOfPromotion>
+      <FormAndType>ADVERTISING</FormAndType>
+      <AmountOfPromotion>2040499.49</AmountOfPromotion>
+      <AmountOfWitholding>100000</AmountOfWitholding>
+      <WitholdingSlipNumber>A123</WitholdingSlipNumber>
+      <Description>Iklan</Description>
+    </List>
+    <List>
+      <IdentityNumber>A1234JH</IdentityNumber>
+      <Name>ACHMAD SAHRI</Name>
+      <Address>BRUNEI DARUSSALAM</Address>
+      <DateOfPromotion>21-03-2023</DateOfPromotion>
+      <FormAndType>BENEFIT</FormAndType>
+      <AmountOfPromotion>6796806.51</AmountOfPromotion>
+      <AmountOfWitholding>1137615</AmountOfWitholding>
+      <WitholdingSlipNumber>A231</WitholdingSlipNumber>
+      <Description>sponsor</Description>
+    </List>
+    <List>
+      <IdentityNumber>3302190406850001</IdentityNumber>
+      <Name>ACHMAD SAHRI</Name>
+      <Address>DK TENGAH RT 001 RW 007 KAB. BREBES 52273</Address>
+      <DateOfPromotion>21-03-2023</DateOfPromotion>
+      <FormAndType>INTRODUCTION</FormAndType>
+      <AmountOfPromotion>2458263</AmountOfPromotion>
+      <AmountOfWitholding>914269.49</AmountOfWitholding>
+      <WitholdingSlipNumber>A123</WitholdingSlipNumber>
+      <Description>AA</Description>
+    </List>
+    <List>
+      <IdentityNumber>A1234JH</IdentityNumber>
+      <Name>MARTEEN</Name>
+      <Address>BRUNEI DARUSSALAM</Address>
+      <DateOfPromotion>21-03-2023</DateOfPromotion>
+      <FormAndType>SPONSORSHIP</FormAndType>
+      <AmountOfPromotion>3131436</AmountOfPromotion>
+      <AmountOfWitholding>1740354.5</AmountOfWitholding>
+      <WitholdingSlipNumber>A123</WitholdingSlipNumber>
+      <Description>BB</Description>
+    </List>
+    <List>
+      <IdentityNumber>3302190406850001</IdentityNumber>
+      <Name>david</Name>
+      <Address>DK TENGAH RT 001 RW 007 KAB. BREBES 52273</Address>
+      <DateOfPromotion>21-03-2023</DateOfPromotion>
+      <FormAndType>BENEFIT</FormAndType>
+      <AmountOfPromotion>2458263</AmountOfPromotion>
+      <AmountOfWitholding>914269.51</AmountOfWitholding>
+      <WitholdingSlipNumber>A123</WitholdingSlipNumber>
+      <Description>AA</Description>
+    </List>
+    <List>
+      <IdentityNumber>A1234JH</IdentityNumber>
+      <Name>pirri</Name>
+      <Address>BRUNEI DARUSSALAM</Address>
+      <DateOfPromotion>21-03-2023</DateOfPromotion>
+      <FormAndType>SPONSORSHIP</FormAndType>
+      <AmountOfPromotion>6796806</AmountOfPromotion>
+      <AmountOfWitholding>1137615</AmountOfWitholding>
+      <WitholdingSlipNumber>A231</WitholdingSlipNumber>
+      <Description>CC</Description>
+    </List>
+    <List>
+      <IdentityNumber>3302190406850001</IdentityNumber>
+      <Name>nofi</Name>
+      <Address>DK TENGAH RT 001 RW 007 KAB. BREBES 52273</Address>
+      <DateOfPromotion>21-03-2023</DateOfPromotion>
+      <FormAndType>SPONSORSHIP</FormAndType>
+      <AmountOfPromotion>2458263</AmountOfPromotion>
+      <AmountOfWitholding>914269</AmountOfWitholding>
+      <WitholdingSlipNumber>A123</WitholdingSlipNumber>
+      <Description>AA</Description>
+    </List>
+    <List>
+      <IdentityNumber>A1234JH</IdentityNumber>
+      <Name>dea</Name>
+      <Address>BRUNEI DARUSSALAM</Address>
+      <DateOfPromotion>21-03-2023</DateOfPromotion>
+      <FormAndType>SPONSORSHIP</FormAndType>
+      <AmountOfPromotion>3131436</AmountOfPromotion>
+      <AmountOfWitholding>1740354</AmountOfWitholding>
+      <WitholdingSlipNumber>A123</WitholdingSlipNumber>
+      <Description>BB</Description>
+    </List>
+  </PromotionExpenseList>
+</PromotionExpense>

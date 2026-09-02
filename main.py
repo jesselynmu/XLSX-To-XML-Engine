@@ -64,6 +64,7 @@ COLUMN_MAPPING_B = {
 }
 
 # ─────────────────────────────────────────────
+<<<<<<< HEAD
 # CONFIG TAB D (Retail Invoice)
 # ─────────────────────────────────────────────
 HEADER_CONFIG_D = {
@@ -97,6 +98,8 @@ COLUMN_MAPPING_D = {
 }
 
 # ─────────────────────────────────────────────
+=======
+>>>>>>> 0c7f0e449c26199230b05b2233b9683f296c87a4
 # HELPERS TAB A & B
 # ─────────────────────────────────────────────
 def extract_header_values(df, header_config):
@@ -193,6 +196,7 @@ def convert_tab_b(df):
     ET.ElementTree(root).write(buf, encoding="utf-8")
     return buf.getvalue().decode("utf-8")
 
+<<<<<<< HEAD
 def convert_tab_d(df):
     header_values = extract_header_values(df, HEADER_CONFIG_D)
 
@@ -234,6 +238,8 @@ def convert_tab_d(df):
     ET.ElementTree(root).write(buf, encoding="utf-8")
     return buf.getvalue().decode("utf-8")
 
+=======
+>>>>>>> 0c7f0e449c26199230b05b2233b9683f296c87a4
 # ─────────────────────────────────────────────
 # HELPERS TAB C (Unifikasi / BpuBulk)
 # ─────────────────────────────────────────────
@@ -414,11 +420,18 @@ def prettify_xml(element):
 def main():
     st.title("🔄 Konverter XLSX ke XML")
 
+<<<<<<< HEAD
     tab_a, tab_b, tab_c, tab_d = st.tabs([
         "📄 Depreciation & Amortization (L9)",
         "🎁 Promotion Expense (L11)",
         "📑 Unifikasi (BpuBulk)",
         "🛒 Retail"
+=======
+    tab_a, tab_b, tab_c = st.tabs([
+        "📄 Depreciation & Amortization (L9)",
+        "🎁 Promotion Expense (L11)",
+        "📑 Unifikasi (BpuBulk)"
+>>>>>>> 0c7f0e449c26199230b05b2233b9683f296c87a4
     ])
 
     # ── TAB A ──────────────────────────────────
@@ -537,6 +550,7 @@ def main():
                             )
                         except Exception as e:
                             st.error(f"❌ Error saat konversi: {str(e)}")
+<<<<<<< HEAD
 
             # ── TAB D ──────────────────────────────────
     with tab_d:
@@ -571,6 +585,8 @@ def main():
                 except Exception as e:
                     st.error(f"❌ Error saat konversi: {str(e)}")
 
+=======
+>>>>>>> 0c7f0e449c26199230b05b2233b9683f296c87a4
         else:
             st.info("👆 Silakan upload file XLSX di atas untuk memulai konversi")
             st.subheader("📋 Format File yang Diharapkan")
