@@ -64,16 +64,41 @@ COLUMN_MAPPING_B = {
 }
 
 # ─────────────────────────────────────────────
+# CONFIG TAB D (Retail Invoice)
+# ─────────────────────────────────────────────
+HEADER_CONFIG_D = {
+    "TIN": {
+        "label": "NPWP",
+        "xml_tag": "TIN"
+    },
+    "TaxPeriodMonth": {
+        "label": "Masa Pajak",
+        "xml_tag": "TaxPeriodMonth"
+    },
+    "TaxPeriodYear": {
+        "label": "Tahun Pajak",
+        "xml_tag": "TaxPeriodYear"
+    }
+}
+
+COLUMN_MAPPING_D = {
+    "TrxCode": "TrxCode",
+    "BuyerName": "BuyerName",
+    "BuyerIdOpt": "BuyerIdOpt",
+    "BuyerIdNumber": "BuyerIdNumber",
+    "GoodServiceOpt": "GoodServiceOpt",
+    "SerialNo": "SerialNo",
+    "TransactionDate": "TransactionDate",
+    "TaxBaseSellingPrice": "TaxBaseSellingPrice",
+    "OtherTaxBaseSellingPrice": "OtherTaxBaseSellingPrice",
+    "VAT": "VAT",
+    "STLG": "STLG",
+    "Info": "Info"
+}
+
+# ─────────────────────────────────────────────
 # HELPERS TAB A & B
 # ─────────────────────────────────────────────
-def read_excel_raw(uploaded_file):
-    """Baca Excel tanpa skip baris (untuk Tab A & B)."""
-    for col in df.columns:
-        if df[col].dtype == 'object':
-            df[col] = df[col].astype(str)
-    df = pd.read_excel(uploaded_file, sheet_name="DATA", header=None)
-    return df.dropna(how="all")
-
 def extract_header_values(df, header_config):
     result = {}
     for _, row in df.iterrows():
@@ -168,9 +193,56 @@ def convert_tab_b(df):
     ET.ElementTree(root).write(buf, encoding="utf-8")
     return buf.getvalue().decode("utf-8")
 
+def convert_tab_d(df):
+    header_values = extract_header_values(df, HEADER_CONFIG_D)
+
+    root = ET.Element(
+        "RetailInvoiceBulk",
+        attrib={
+            "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+            "xsi:noNamespaceSchemaLocation": "schema.xsd"
+        }
+    )
+
+    ET.SubElement(root, "TIN").text = header_values.get("TIN", "")
+    ET.SubElement(root, "TaxPeriodMonth").text = header_values.get("TaxPeriodMonth", "")
+    ET.SubElement(root, "TaxPeriodYear").text = header_values.get("TaxPeriodYear", "")
+
+    invoice_list = ET.SubElement(root, "ListOfRetailInvoice")
+
+    header = None
+
+    for _, row in df.iterrows():
+        row_values = [str(cell).strip() for cell in row]
+
+        # deteksi baris header: cari "TrxCode" di mana saja dalam baris
+        if header is None and "TrxCode" in row_values:
+            header = [str(col).replace(" ", "") for col in row]
+            continue
+
+        if header and not row.isnull().all():
+            record = ET.SubElement(invoice_list, "RetailInvoice")
+            for col_name, value in zip(header, row):
+                if pd.notna(value) and col_name in COLUMN_MAPPING_D and str(value).strip() != "":
+                    ET.SubElement(
+                        record,
+                        COLUMN_MAPPING_D[col_name]
+                    ).text = str(value)
+
+    ET.indent(root, space="  ")
+    buf = io.BytesIO()
+    ET.ElementTree(root).write(buf, encoding="utf-8")
+    return buf.getvalue().decode("utf-8")
+
 # ─────────────────────────────────────────────
 # HELPERS TAB C (Unifikasi / BpuBulk)
 # ─────────────────────────────────────────────
+def is_empty(value):
+    """Cek apakah nilai kosong/nan."""
+    if value is None:
+        return True
+    return str(value).strip() in ('', 'nan', 'NaN', 'None')
+
 def read_excel_unifikasi(uploaded_file):
     """Baca Excel dengan skip 2 baris header (untuk Tab C)."""
     file_name = uploaded_file.name.lower()
@@ -180,7 +252,16 @@ def read_excel_unifikasi(uploaded_file):
             uploaded_file,
             sheet_name='DATA',
             engine=engine,
-            skiprows=2, keep_default_na=False
+            skiprows=2,
+            keep_default_na=False,
+            # Kolom yang punya leading zero dibaca langsung sebagai string
+            dtype={
+                'ID TKU Pemotong': str,
+                'ID TKU Penerima Penghasilan': str,
+                'NPWP': str,
+                'Nomor Dok. Referensi': str,
+                'Nomor SP2D (IP)': str,
+            }
         )
         df = df.dropna(how='all')
         # Fix tipe data object agar tidak OverflowError
@@ -209,9 +290,9 @@ def format_date(date_value):
             return str(date_value)
 
 def format_npwp(npwp_value):
-    if pd.isna(npwp_value):
+    if is_empty(npwp_value):
         return "N/A"
-    npwp_str = str(npwp_value).replace('.0', '')
+    npwp_str = str(npwp_value).replace('.0', '').strip()
     if npwp_str.isdigit():
         return npwp_str.zfill(16)
     return npwp_str
@@ -225,61 +306,100 @@ def convert_tab_c(df, tin_pemotong):
     list_of_bpu = ET.SubElement(root, "ListOfBpu")
 
     for _, row in df.iterrows():
-        if pd.isna(row.get('NPWP')):
+        npwp = row.get('NPWP', '')
+        if is_empty(npwp):
             continue
 
         bpu = ET.SubElement(list_of_bpu, "Bpu")
 
+        # TaxPeriodMonth
+        masa = row.get('Masa Pajak', '')
         ET.SubElement(bpu, "TaxPeriodMonth").text = (
-            str(int(row['Masa Pajak'])) if not pd.isna(row.get('Masa Pajak')) else "1"
+            str(int(float(masa))) if not is_empty(masa) else "1"
         )
+
+        # TaxPeriodYear
+        tahun = row.get('Tahun Pajak', '')
         ET.SubElement(bpu, "TaxPeriodYear").text = (
-            str(int(row['Tahun Pajak'])) if not pd.isna(row.get('Tahun Pajak')) else "2025"
+            str(int(float(tahun))) if not is_empty(tahun) else "2025"
         )
-        ET.SubElement(bpu, "CounterpartTin").text = format_npwp(row['NPWP'])
 
+        # CounterpartTin
+        ET.SubElement(bpu, "CounterpartTin").text = format_npwp(npwp)
+
+        # IDPlaceOfBusinessActivityOfIncomeRecipient
+        id_tku_penerima = str(row.get('ID TKU Penerima Penghasilan', '')).strip()
         ET.SubElement(bpu, "IDPlaceOfBusinessActivityOfIncomeRecipient").text = (
-            str(row['ID TKU Penerima Penghasilan'])
-            if not pd.isna(row.get('ID TKU Penerima Penghasilan')) else ""
+            "" if is_empty(id_tku_penerima) else id_tku_penerima
         )
+
+        # TaxCertificate — jaga nilai N/A dari Excel
+        fasilitas = str(row.get('Fasilitas', '')).strip()
         ET.SubElement(bpu, "TaxCertificate").text = (
-            "N/A" if pd.isna(row.get('Fasilitas')) else str(row['Fasilitas'])
+            "N/A" if is_empty(fasilitas) else fasilitas
         )
+
+        # TaxObjectCode
+        kop = str(row.get('Kode Objek Pajak', '')).strip()
         ET.SubElement(bpu, "TaxObjectCode").text = (
-            str(row['Kode Objek Pajak']) if not pd.isna(row.get('Kode Objek Pajak')) else ""
+            "" if is_empty(kop) else kop
         )
+
+        # TaxBase
+        dpp = row.get('DPP', '')
         ET.SubElement(bpu, "TaxBase").text = (
-            str(int(row['DPP'])) if not pd.isna(row.get('DPP')) else "0"
+            str(int(float(dpp))) if not is_empty(dpp) else "0"
         )
+
+        # Rate — biarkan float, jangan int agar 0.50 tidak jadi 0
+        tarif = row.get('Tarif', '')
         ET.SubElement(bpu, "Rate").text = (
-            str(int(row['Tarif'])) if not pd.isna(row.get('Tarif')) else "2"
+            str(tarif) if not is_empty(tarif) else "2"
         )
+
+        # Document
+        jenis_dok = str(row.get('Jenis Dok. Referensi', '')).strip()
         ET.SubElement(bpu, "Document").text = (
-            str(row['Jenis Dok. Referensi'])
-            if not pd.isna(row.get('Jenis Dok. Referensi')) else ""
+            "" if is_empty(jenis_dok) else jenis_dok
         )
+
+        # DocumentNumber
+        nomor_dok = str(row.get('Nomor Dok. Referensi', '')).strip()
         ET.SubElement(bpu, "DocumentNumber").text = (
-            str(row['Nomor Dok. Referensi'])
-            if not pd.isna(row.get('Nomor Dok. Referensi')) else ""
-        )
-        ET.SubElement(bpu, "DocumentDate").text = format_date(row.get('Tanggal Dok. Referensi'))
-
-        id_tku = str(row['ID TKU Pemotong']) if not pd.isna(row.get('ID TKU Pemotong')) else ""
-        ET.SubElement(bpu, "IDPlaceOfBusinessActivity").text = (
-            "00" + id_tku if id_tku and len(id_tku) == 20 else id_tku
+            "" if is_empty(nomor_dok) else nomor_dok
         )
 
+        # DocumentDate
+        ET.SubElement(bpu, "DocumentDate").text = format_date(
+            row.get('Tanggal Dok. Referensi')
+        ) or ""
+
+        # IDPlaceOfBusinessActivity — leading zero dijaga karena dtype=str saat baca
+        id_tku = str(row.get('ID TKU Pemotong', '')).strip()
+        if not is_empty(id_tku):
+            id_tku_final = "00" + id_tku if len(id_tku) == 20 else id_tku
+        else:
+            id_tku_final = ""
+        ET.SubElement(bpu, "IDPlaceOfBusinessActivity").text = id_tku_final
+
+        # GovTreasurerOpt
+        opsi = str(row.get('Opsi Pembayaran (IP)', '')).strip()
         ET.SubElement(bpu, "GovTreasurerOpt").text = (
-            "N/A" if pd.isna(row.get('Opsi Pembayaran (IP)')) else str(row['Opsi Pembayaran (IP)'])
+            "N/A" if is_empty(opsi) else opsi
         )
 
+        # SP2DNumber
         sp2d = ET.SubElement(bpu, "SP2DNumber")
-        if pd.isna(row.get('Nomor SP2D (IP)')):
+        nomor_sp2d = str(row.get('Nomor SP2D (IP)', '')).strip()
+        if is_empty(nomor_sp2d):
             sp2d.set("xsi:nil", "true")
         else:
-            sp2d.text = str(row['Nomor SP2D (IP)'])
+            sp2d.text = nomor_sp2d
 
-        ET.SubElement(bpu, "WithholdingDate").text = format_date(row.get('Tanggal Pemotongan'))
+        # WithholdingDate
+        ET.SubElement(bpu, "WithholdingDate").text = format_date(
+            row.get('Tanggal Pemotongan')
+        ) or ""
 
     return root
 
@@ -294,10 +414,11 @@ def prettify_xml(element):
 def main():
     st.title("🔄 Konverter XLSX ke XML")
 
-    tab_a, tab_b, tab_c = st.tabs([
+    tab_a, tab_b, tab_c, tab_d = st.tabs([
         "📄 Depreciation & Amortization (L9)",
         "🎁 Promotion Expense (L11)",
-        "📑 Unifikasi (BpuBulk)"
+        "📑 Unifikasi (BpuBulk)",
+        "🛒 Retail"
     ])
 
     # ── TAB A ──────────────────────────────────
@@ -311,9 +432,8 @@ def main():
         )
 
         if file_a:
-            df_a = pd.read_excel(file_a, sheet_name="DATA", header=None)
+            df_a = pd.read_excel(file_a, sheet_name="DATA", header=None, keep_default_na=False)
             df_a = df_a.dropna(how="all")
-            # Fix OverflowError
             for col in df_a.columns:
                 if df_a[col].dtype == 'object':
                     df_a[col] = df_a[col].astype(str)
@@ -345,9 +465,8 @@ def main():
         )
 
         if file_b:
-            df_b = pd.read_excel(file_b, sheet_name="DATA", header=None)
+            df_b = pd.read_excel(file_b, sheet_name="DATA", header=None, keep_default_na=False)
             df_b = df_b.dropna(how="all")
-            # Fix OverflowError
             for col in df_b.columns:
                 if df_b[col].dtype == 'object':
                     df_b[col] = df_b[col].astype(str)
@@ -418,6 +537,40 @@ def main():
                             )
                         except Exception as e:
                             st.error(f"❌ Error saat konversi: {str(e)}")
+
+            # ── TAB D ──────────────────────────────────
+    with tab_d:
+        st.markdown("Konversi XLSX ke XML **Retail Invoice**")
+
+        file_d = st.file_uploader(
+            "Upload XLSX dengan SheetName = DATA",
+            type=["xlsx", "xls"],
+            key="file_d"
+        )
+
+        if file_d:
+            df_d = pd.read_excel(file_d, sheet_name="DATA", header=None, keep_default_na=False)
+            df_d = df_d.dropna(how="all")
+            for col in df_d.columns:
+                if df_d[col].dtype == 'object':
+                    df_d[col] = df_d[col].astype(str)
+
+            st.dataframe(df_d.head(), use_container_width=True)
+
+            if st.button("🔄 Convert to XML", type="primary", key="btn_d", use_container_width=True):
+                try:
+                    xml = convert_tab_d(df_d)
+                    st.code(xml[:800] + "...", language="xml")
+                    st.download_button(
+                        "💾 Download XML",
+                        xml,
+                        file_d.name.replace(".xlsx", ".xml").replace(".xls", ".xml"),
+                        "application/xml",
+                        use_container_width=True
+                    )
+                except Exception as e:
+                    st.error(f"❌ Error saat konversi: {str(e)}")
+
         else:
             st.info("👆 Silakan upload file XLSX di atas untuk memulai konversi")
             st.subheader("📋 Format File yang Diharapkan")
