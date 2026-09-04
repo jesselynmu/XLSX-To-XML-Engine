@@ -193,13 +193,7 @@ def convert_tab_b(df):
 def convert_tab_d(df):
     header_values = extract_header_values(df, HEADER_CONFIG_D)
 
-    root = ET.Element(
-        "RetailInvoiceBulk",
-        attrib={
-            "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
-            "xsi:noNamespaceSchemaLocation": "schema.xsd"
-        }
-    )
+    root = ET.Element("RetailInvoiceBulk")
 
     ET.SubElement(root, "TIN").text = header_values.get("TIN", "")
     ET.SubElement(root, "TaxPeriodMonth").text = header_values.get("TaxPeriodMonth", "")
@@ -226,10 +220,8 @@ def convert_tab_d(df):
                         COLUMN_MAPPING_D[col_name]
                     ).text = str(value)
 
-    ET.indent(root, space="  ")
-    buf = io.BytesIO()
-    ET.ElementTree(root).write(buf, encoding="utf-8")
-    return buf.getvalue().decode("utf-8")
+    xml_string = prettify_xml(root)
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' + xml_string
 
 # ─────────────────────────────────────────────
 # HELPERS TAB C (Unifikasi / BpuBulk)
